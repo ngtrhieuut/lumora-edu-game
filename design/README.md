@@ -35,6 +35,8 @@ Nguồn hình concept hiện tại được tạo từ các prompt thiết kế 
 | 23 | 23.jpg | League | `design/07-metagame/23-league.jpg` | Defer from MVP |
 | 24 | 24.jpg | Oracle hint flow | `design/08-oracle/24-hint-flow.jpg` | **Canonical** |
 | 25 | 25.jpg | Parent dashboard | `design/09-parent/25-dashboard.jpg` | Revise |
+| 26 | 26.jpg | Mascot C01–C04 character exploration | `design/02-characters/26-mascot-c01-c04.jpg` | **Review: choose C04 direction / revise C01–C03** |
+| 27 | 27.jpg | Oracle Concept Bible — Manifestation of Knowledge | `design/08-oracle/27-oracle-concept-bible.jpg` | **Keep / near-canonical direction** |
 
 ## Design source rule
 
