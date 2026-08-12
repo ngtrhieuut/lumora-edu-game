@@ -136,12 +136,22 @@ import {
   createPlaySessionDraftStore,
   normalizePlaySessionDraft,
 } from "./playSessionDraft";
+import { ALL_LEVELS, getLevelById } from "./levelCatalog/index.js";
+import {
+  createCatalogProgress,
+  isLevelUnlocked,
+  normalizeCatalogProgress,
+  recordCatalogLevelResult,
+} from "./runtime/catalogProgression.js";
+import LevelRuntime from "./runtime/LevelRuntime.jsx";
+import { CatalogCompletionView, CatalogMapView } from "./runtime/CatalogCampaignView.jsx";
 
 const STORAGE_KEY = "lumora-rung-thuc-tinh-demo-v2";
 const LEGACY_STORAGE_KEY = "lumora-rung-thuc-tinh-demo-v1";
 const PROFILE_KEY = "lumora-child-profile-v1";
 const PRACTICE_RESUME_KEY = "lumora-daily-adventure-resume-v1";
 const PLAY_DRAFT_KEY = PLAY_SESSION_DRAFT_STORAGE_KEY;
+const CATALOG_STORAGE_KEY = "lumora.catalog.progress.v1";
 
 function getBrowserStorage() {
   try {
@@ -201,6 +211,11 @@ function readPlayDraft() {
   });
 }
 
+function readCatalogProgress() {
+  const result = createLocalProgressStore({ storage: getBrowserStorage(), key: CATALOG_STORAGE_KEY }).load();
+  return result.ok ? normalizeCatalogProgress(result.data, ALL_LEVELS) : createCatalogProgress();
+}
+
 function getPlayPhaseCount(node) {
   return getMultiStageConfig(node?.type)?.length ?? 1;
 }
@@ -217,6 +232,9 @@ export default function App() {
   const [profile, setProfile] = useState(readProfile);
   const [view, setView] = useState(() => (readProfile() ? "home" : "onboarding"));
   const [progress, setProgress] = useState(readProgress);
+  const [catalogProgress, setCatalogProgress] = useState(readCatalogProgress);
+  const [selectedCatalogLevelId, setSelectedCatalogLevelId] = useState("g1-l001");
+  const [lastCatalogResult, setLastCatalogResult] = useState(null);
   const [selectedNodeId, setSelectedNodeId] = useState("collect");
   const [selectedQuestId, setSelectedQuestId] = useState(null);
   const [roundKey, setRoundKey] = useState(0);
@@ -258,6 +276,10 @@ export default function App() {
   useEffect(() => {
     createLocalProgressStore({ storage: getBrowserStorage(), key: STORAGE_KEY }).save(progress);
   }, [progress]);
+
+  useEffect(() => {
+    createLocalProgressStore({ storage: getBrowserStorage(), key: CATALOG_STORAGE_KEY }).save(catalogProgress);
+  }, [catalogProgress]);
 
   useEffect(() => {
     const store = createPracticeResumeStore({ storage: getBrowserStorage(), key: PRACTICE_RESUME_KEY });
@@ -334,6 +356,7 @@ export default function App() {
     () => nodes.find((node) => node.id === selectedNodeId) ?? nodes[0],
     [selectedNodeId],
   );
+  const selectedCatalogLevel = useMemo(() => getLevelById(selectedCatalogLevelId), [selectedCatalogLevelId]);
   const selectedQuest = useMemo(
     () => optionalQuests.find((quest) => quest.id === selectedQuestId) ?? null,
     [selectedQuestId],
@@ -432,6 +455,36 @@ export default function App() {
 
   function clearPlayDraft() {
     setPlayDraft(null);
+  }
+
+  function openCatalog() {
+    setSettingsOpen(false);
+    setView("catalog-map");
+  }
+
+  function startCatalogLevel(level) {
+    if (!level || level.grade !== 1 || level.order > 10) return;
+    if (!isLevelUnlocked(level.id, catalogProgress, ALL_LEVELS)) return;
+    setSelectedCatalogLevelId(level.id);
+    setLastCatalogResult(null);
+    setView("catalog-play");
+  }
+
+  function completeCatalogLevel(result) {
+    const level = getLevelById(result?.levelId ?? selectedCatalogLevelId);
+    if (!level) return;
+    const transition = recordCatalogLevelResult(catalogProgress, level, result, { levels: ALL_LEVELS });
+    setCatalogProgress(transition.progress);
+    setLastCatalogResult({ ...transition.result, firstClear: transition.firstClear, earnedRewards: transition.earnedRewards, nextLevel: transition.nextLevel });
+    setView("catalog-completion");
+  }
+
+  function checkpointCatalogLevel(checkpoint) {
+    if (!checkpoint || !selectedCatalogLevelId) return;
+    setCatalogProgress((current) => normalizeCatalogProgress({
+      ...current,
+      runtimeCheckpoints: { ...(current.runtimeCheckpoints ?? {}), [selectedCatalogLevelId]: checkpoint },
+    }, ALL_LEVELS));
   }
 
   function checkpointPlayPhase(identity, patch) {
@@ -901,6 +954,10 @@ export default function App() {
     setPracticeSummary(null);
     clearPracticeResume();
     clearPlayDraft();
+    createLocalProgressStore({ storage: getBrowserStorage(), key: CATALOG_STORAGE_KEY }).clear();
+    setCatalogProgress(createCatalogProgress());
+    setSelectedCatalogLevelId("g1-l001");
+    setLastCatalogResult(null);
     setFirstSessionFlow(createFirstSessionFlow());
     setFirstSessionContinuation(createFirstSessionContinuation());
     setView("home");
@@ -918,10 +975,13 @@ export default function App() {
     createLocalProgressStore({ storage: getBrowserStorage(), key: LEGACY_STORAGE_KEY }).clear();
     setProgress(normalizeAppProgress(createInitialProgress()));
     clearPlayDraft();
+    createLocalProgressStore({ storage: getBrowserStorage(), key: CATALOG_STORAGE_KEY }).clear();
+    setCatalogProgress(createCatalogProgress());
+    setLastCatalogResult(null);
     setMapIntro(false);
     setFirstSessionFlow(beginFirstSessionFlow());
     setFirstSessionContinuation(createFirstSessionContinuation());
-    setView("first-session-oracle");
+    setView("catalog-map");
   }
 
   if (booting) return <BootScreen />;
@@ -933,6 +993,27 @@ export default function App() {
       onBack={() => setView("parent")}
       onContinue={resumeOneStage}
       onStartFresh={beginFreshSession}
+    />
+  );
+  if (view === "catalog-map") return <CatalogMapView progress={catalogProgress} onStart={startCatalogLevel} onBack={() => setView("home")} />;
+  if (view === "catalog-play" && selectedCatalogLevel) return (
+    <LevelRuntime
+      key={selectedCatalogLevel.id}
+      level={selectedCatalogLevel}
+      progress={catalogProgress}
+      profile={profile}
+      audioProvider={audio}
+      onComplete={completeCatalogLevel}
+      onPhaseCheckpoint={checkpointCatalogLevel}
+      onExit={() => setView("catalog-map")}
+    />
+  );
+  if (view === "catalog-completion" && lastCatalogResult && selectedCatalogLevel) return (
+    <CatalogCompletionView
+      level={selectedCatalogLevel}
+      result={lastCatalogResult}
+      onContinue={() => setView("catalog-map")}
+      onReplay={() => startCatalogLevel(selectedCatalogLevel)}
     />
   );
   if (view === "review-play" && reviewNode) return (
@@ -987,6 +1068,7 @@ export default function App() {
             world={activeWorld}
             onStart={() => startNode(nextNode)}
             onMap={() => setView("map")}
+            onOpenCatalog={openCatalog}
             onCreature={() => setView("creature")}
             onPractice={openPractice}
             practiceResume={practiceResume}
@@ -1448,7 +1530,7 @@ function TopBar({ progress, world, worldNodes, audioPreferences, audioCapability
   );
 }
 
-function HomeView({ progress, profile, nextNode, world, onStart, onMap, onCreature, onPractice, practiceResume, playDraft, onResumePlay, onRestartPlay, cosmeticId }) {
+function HomeView({ progress, profile, nextNode, world, onStart, onMap, onOpenCatalog, onCreature, onPractice, practiceResume, playDraft, onResumePlay, onRestartPlay, cosmeticId }) {
   const started = getWorldProgress(world, progress).completedCount > 0;
   const evolutionStage = getNubiEvolutionStage(progress, nubiEvolutionStages) ?? nubiEvolutionStages[0];
   const homeNubiMood = progress.nubiStage >= 2 ? "resonant" : nextNode ? "curious" : "idle";
@@ -1469,6 +1551,7 @@ function HomeView({ progress, profile, nextNode, world, onStart, onMap, onCreatu
             <span>{started ? "Tiếp tục hành trình" : "Chạm để đánh thức"}</span><b aria-hidden="true">➜</b>
           </button>
           <button className="quiet-action" type="button" onClick={onMap}>Xem bản đồ</button>
+          <button className="quiet-action catalog-entry-action" type="button" onClick={onOpenCatalog}>Campaign Grade 1 · Level Runtime v1</button>
         </div>
         {draftTarget && (
           <article className="play-resume-card" aria-label={`Phiên đang dở: ${draftTarget.title}`}>

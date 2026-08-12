@@ -522,3 +522,15 @@
 **Visual boundary:** `NubiFigure` có `.nubi-character` chứa sprite RGBA. Ambient giữ contact shadow và field rất nhẹ; full-body mask giảm còn cue phụ; core/corona/beam được dành cho signal gameplay và drag. Không flatten asset, không thêm nền hình chữ nhật; reduced-motion tắt animation nhưng giữ signal state.
 
 **Verification:** `src/firstSessionFlow.test.js`, `src/firstSessionPrototype.test.js`, `src/nubiVisual.test.js`, full `npm test` `325/325`, `npm run build:demo`; localhost đã kiểm tra `Gọi Tên Số` bằng tap fallback và Pointer drag thật. Production audit tiếp tục fail-closed vì `0 approved` và thiếu official source evidence/human approval.
+
+## 2026-08-12 - LevelRuntime v1 dùng catalog làm data boundary
+
+**Decision:** Giữ catalog 500 level tách khỏi legacy 12-node prototype và thêm `LevelRuntime v1` theo mechanic family. Runtime resolve bằng `mechanicId`, không tạo 500 nhánh React hoặc switch theo level id. App nối Grade 1 Chapter 1 (`g1-l001`…`g1-l010`) qua một campaign boundary riêng; Chapter 2 chỉ hiện là boundary tiếp theo.
+
+**Progression boundary:** Catalog dùng prerequisite chain Grade → Chapter → Level, Knowledge Energy/Shards và restoration/mastery. `xp` chỉ giữ tương thích save, không tham gia unlock. `rewardLedger` làm first-clear reward idempotent; replay chỉ cải thiện evidence.
+
+**Safety boundary:** Completion contract ghi attempts, supports, guided, accuracy, error codes, mastery, phase checkpoints và timestamp. Oracle mặc định là rule-based local Vietnamese hint ladder; không có client Gemini key, chat tự do, leaderboard, timer áp lực hoặc Firebase write.
+
+**Boss boundary:** `g1-l010` có 4 phase và checkpoint từng phase. Failure không reset toàn bộ boss; recovery meter và Oracle support chỉ là cơ chế hồi phục trong session.
+
+**Verification:** `src/runtime/levelRuntime.test.js`, full `npm test` `339/339`, `npm run build:demo`. `agent-browser` CLI không có trong workspace nên dev server được kiểm tra bằng HTTP `200`, headless Chrome dump DOM và Vite build; browser panel đã được mở để reviewer kiểm tra trực quan. Production audit vẫn fail-closed vì curriculum chưa có human official approval.
