@@ -1,0 +1,80 @@
+// Local-only prototype registry. Prototype nodes are reviewable in Playtest Lab
+// but must never enter campaign progress, mastery, reward, or production audit.
+
+const freezePrototypeNode = (node) => Object.freeze({
+  ...node,
+  energyTypes: Object.freeze([...(node.energyTypes ?? [])]),
+});
+
+export const prototypeNodes = Object.freeze([
+  freezePrototypeNode({
+    id: "prototype-order",
+    index: null,
+    title: "Dòng Ký Ức",
+    shortTitle: "Sắp xếp thứ tự",
+    type: "order",
+    icon: "↕",
+    chapter: "Playtest Lab · Prototype",
+    grade: 1,
+    subject: "Toán & khám phá",
+    domain: "Trình tự",
+    skillId: "PROTOTYPE_ORDERING",
+    skillNameVi: "Sắp xếp theo trình tự",
+    objectiveVi: "Đặt các dấu sáng theo đúng thứ tự.",
+    prompt: "Kéo ba dấu sáng vào các ô theo thứ tự.",
+    reward: 0,
+    approved: false,
+    sourceReference: "Prototype only — chưa được phê duyệt",
+    scene: "/assets/rune-scene.jpg",
+    energyTypes: ["discovery"],
+    kind: "prototype",
+  }),
+  freezePrototypeNode({
+    id: "prototype-compare-pair",
+    index: null,
+    title: "Hai Bờ Kích Thước",
+    shortTitle: "So từng cặp",
+    type: "compare-pair",
+    icon: "≈",
+    chapter: "Playtest Lab · Prototype",
+    grade: 1,
+    subject: "Toán & khám phá",
+    domain: "So sánh",
+    skillId: "PROTOTYPE_COMPARE_PAIR",
+    skillNameVi: "So sánh lớn hơn và nhỏ hơn",
+    objectiveVi: "Nhận biết quan hệ lớn hơn hoặc nhỏ hơn qua từng cặp vật thể.",
+    prompt: "Nhìn từng cặp hạt rồi kéo hạt phù hợp vào ô lớn hơn hoặc nhỏ hơn.",
+    reward: 0,
+    approved: false,
+    sourceReference: "Prototype only — chưa được phê duyệt curriculum production",
+    scene: "/assets/sorting-scene.jpg",
+    energyTypes: ["logic"],
+    kind: "prototype",
+  }),
+  freezePrototypeNode({
+    id: "prototype-numeral",
+    index: null,
+    title: "Gọi Tên Số",
+    shortTitle: "Nhận biết số",
+    type: "numeral",
+    icon: "#",
+    chapter: "Playtest Lab · Prototype",
+    grade: 1,
+    subject: "Toán & khám phá",
+    domain: "Số và phép tính",
+    skillId: "PROTOTYPE_NUMERAL_RECOGNITION",
+    skillNameVi: "Nhận biết chữ số qua số lượng",
+    objectiveVi: "Nhận ra chữ số tương ứng với một nhóm hạt sáng.",
+    prompt: "Đếm nhóm hạt rồi kéo chữ số phù hợp vào Lõi gọi số.",
+    reward: 0,
+    approved: false,
+    sourceReference: "Prototype only — chưa được phê duyệt curriculum production",
+    scene: "/assets/collect-scene.jpg",
+    energyTypes: ["logic"],
+    kind: "prototype",
+  }),
+]);
+
+export function getPrototypeNode(id) {
+  return prototypeNodes.find((node) => node.id === id || node.type === id) ?? null;
+}

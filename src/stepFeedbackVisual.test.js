@@ -1,0 +1,52 @@
+import assert from "node:assert/strict";
+import fs from "node:fs";
+import path from "node:path";
+import test from "node:test";
+import { fileURLToPath } from "node:url";
+
+const srcDir = path.dirname(fileURLToPath(import.meta.url));
+const readSource = (name) => fs.readFileSync(path.join(srcDir, name), "utf8");
+
+test("Path, Collect, Bridge, Subtract and Sort expose bounded step feedback without changing rules", () => {
+  const app = readSource("App.jsx");
+  const css = readSource("styles.css");
+
+  assert.match(app, /const \[lastPlacedSlot, setLastPlacedSlot\] = useState\(null\)/);
+  assert.match(app, /data-active-slot=\{nextSlot \?\? "none"\}/);
+  assert.match(app, /data-path-feedback=\{feedback \?\? \(placed\.length === 2 \? "complete" : "idle"\)\}/);
+  assert.match(app, /data-path-landed=\{lastPlacedSlot === index \? "true" : undefined\}/);
+  assert.match(app, /aria-current=\{isActive \? "step" : undefined\}/);
+  assert.match(app, /const \[lastCollectedId, setLastCollectedId\] = useState\(null\)/);
+  assert.match(app, /validDropZones=\{item\.lit \? \["core"\] : \[\]\}/);
+  assert.match(app, /data-active-seed=\{nextLitSeed \?\? "none"\}/);
+  assert.match(app, /data-collect-feedback=\{feedback \?\? \(picked\.length === 5 \? "complete" : "idle"\)\}/);
+  assert.match(app, /data-drop-landed=\{feedback === "correct" \? "true" : undefined\}/);
+  assert.match(app, /const \[lastPlacedCrystalId, setLastPlacedCrystalId\] = useState\(null\)/);
+  assert.match(app, /data-active-step=\{state\.complete \? "none" : state\.steps\}/);
+  assert.match(app, /data-bridge-feedback=\{feedback \?\? \(state\.complete \? "complete" : "idle"\)\}/);
+  assert.match(app, /data-rung-landed=\{landed \? "true" : undefined\}/);
+  assert.match(app, /data-crystal-landed=\{lastPlacedCrystalId === id \? "true" : undefined\}/);
+  assert.match(app, /const \[lastReturnedId, setLastReturnedId\] = useState\(null\)/);
+  assert.match(app, /data-active-firefly=\{nextFirefly \?\? "none"\}/);
+  assert.match(app, /data-subtract-feedback=\{feedback \?\? \(returned\.length === 2 \? "complete" : "idle"\)\}/);
+  assert.match(app, /data-firefly-landed=\{lastReturnedId === id \? "true" : undefined\}/);
+  assert.match(app, /const \[lastPebbleIndex, setLastPebbleIndex\] = useState\(null\)/);
+  assert.match(app, /data-active-pebble=\{nextIndex >= 0 \? nextIndex : "none"\}/);
+  assert.match(app, /data-sort-feedback=\{feedback \?\? \(done\.length === items\.length \? "complete" : "idle"\)\}/);
+  assert.match(app, /data-pebble-landed=\{lastPebbleIndex === index \? "true" : undefined\}/);
+  assert.match(app, /data-bank-landed=\{feedback === "correct" && lastBank === "small" \? "true" : undefined\}/);
+  assert.match(app, /window\.setTimeout\(\(\) => \{[\s\S]*onFinish\(\);[\s\S]*\}, 560\)/);
+  assert.match(css, /\.path-board\[data-path-feedback="correct"\] \.light-path/);
+  assert.match(css, /\.collect-core\.resonating\s*\{[^}]*collect-core-resonate/s);
+  assert.match(css, /\.bridge-energy-river\.handoff::after/);
+  assert.match(css, /\.crystal-token\.landed-crystal/);
+  assert.match(css, /@keyframes path-slot-landed/);
+  assert.match(css, /@keyframes collect-seed-wrong/);
+  assert.match(css, /@keyframes bridge-energy-handoff/);
+  assert.match(css, /@keyframes subtract-firefly-landed/);
+  assert.match(css, /\.firefly-nest\.resonating/);
+  assert.match(css, /@keyframes sort-pebble-landed/);
+  assert.match(css, /\.sort-board\[data-sort-feedback="correct"\] \.river-flow/);
+  assert.match(css, /@media \(prefers-reduced-motion: reduce\)[\s\S]*\.collect-core\.resonating[\s\S]*\.path-board\[data-path-feedback="correct"\] \.light-path \{ animation: none !important; \}/s);
+  assert.match(css, /@media \(prefers-reduced-motion: reduce\)[\s\S]*\.firefly-nest\.resonating[\s\S]*\.sort-board\[data-sort-feedback="wrong"\] \.sorting-bank\.active/s);
+});

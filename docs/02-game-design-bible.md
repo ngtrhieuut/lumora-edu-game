@@ -43,6 +43,10 @@ Ví dụ:
 
 Tên sẽ Việt hóa hoặc dùng tên lore tiếng Việt ở production.
 
+### Prototype implementation
+
+Runtime giữ bốn counter allowlist trong progress: `logic`, `nature`, `discovery` và `mastery`. Node/quest chỉ khai báo category qua data; first-clear mới cộng năng lượng theo mastery (`independent` +2, `guided/support` +1), replay không farm. `Nature Energy` chưa được cấp trong World 1 vì chưa có curriculum Khoa học/Tự nhiên và nguồn chính thức đã được duyệt. `src/nubiResonance.js` dùng cùng registry để tạo feedback visual: ambient intensity 1 trong gameplay, reward/first-clear intensity 2 ở success/restoration, không tác động learning outcome.
+
 ## D. Evolution
 
 Evolution không dựa chủ yếu vào thời gian chơi.
@@ -54,6 +58,14 @@ Ví dụ:
 - hoàn thành challenge.
 
 Nhờ đó **học thật → tiến hóa thật**.
+
+### Prototype progression signal
+
+Runtime tách `XP` khỏi `Mảnh Tri Thức`: first-clear nhận XP theo reward và mastery, còn replay chỉ luyện kỹ năng và không farm XP. XP là tín hiệu progression cho HUD, reward screen và Parent Dashboard; nó không thay thế mastery hoặc curriculum approval.
+
+### Prototype implementation
+
+Nubi hiện có hai hình thái data-driven: `Mầm Sáng` và `Dẫn Quang`. First clear Boss chuyển stage 1 → 2, thay sprite thật ở Home/City/Creature, mở cinematic có reduced-motion fallback và giữ stage qua local persistence. Boss replay không tạo transition mới.
 
 ## E. Thế giới theo lớp
 
@@ -77,6 +89,10 @@ Khoảng 20–30 level:
 - Boss: tổng hợp knowledge.
 
 Không bắt buộc mọi Side/Secret Quest để đi tiếp.
+
+### Prototype implementation
+
+Rừng Thức Tỉnh hiện có hai Side Quest và một Secret Quest data-driven. Các nhánh này chỉ tái tổ hợp mechanic đã học, mở theo prerequisite, ghi mastery riêng và thưởng cosmetic một lần; chúng không nằm trong chuỗi prerequisite của 12 Main Quest và không cấp Mảnh Tri Thức.
 
 ## G. Gameplay library
 
@@ -130,6 +146,8 @@ Mastery mở khóa công trình:
 - Thư viện.
 - Các công trình cosmetic.
 
+Trong prototype, bốn công trình runtime giữ mốc xây 3/7/9/12 chặng và thêm mastery gate tối thiểu 2 trên nhóm node nền tương ứng. Như vậy số chặng tạo nhịp mở khóa, còn chất lượng làm bài quyết định công trình đã thực sự tỏa sáng hay chưa.
+
 Knowledge City là:
 - reward,
 - status,
@@ -174,3 +192,11 @@ Dùng league:
 Nhóm nhỏ ~20–30 người có trình độ gần nhau.
 
 Điểm nên dựa trên mastery/challenge, không chỉ time played.
+
+## M. Campaign / World boundary
+
+Mỗi World phải có registry riêng gồm `id`, grade, trạng thái playable/preview, danh sách Main Quest, Optional Quest, Boss và prerequisite World. Completion được tính trong node boundary của World đó; node từ World khác không được mở khóa hoặc hoàn tất chéo.
+
+Prototype hiện ánh xạ toàn bộ 12 node của Rừng Thức Tỉnh vào `forest-awakening`. World kế tiếp chỉ tồn tại dưới dạng preview không playable để chứng minh khả năng mở rộng; không thêm level hoặc curriculum giả trước khi có source evidence và phê duyệt.
+
+Runtime hiện cho phép mở một màn hình blueprint read-only của World kế tiếp ngay từ bản đồ. Màn hình này chỉ trình bày lore, hướng trải nghiệm và gate phê duyệt; không có node, reward, progress hoặc curriculum approval nào được tạo từ preview.
