@@ -106,6 +106,18 @@ Flow:
 
 Điểm quan trọng: Oracle **biến đổi chính cơ thể/năng lượng của mình thành công cụ minh họa**, thay vì mở một bảng bài giảng riêng.
 
+### Prototype implementation - 2026-08-11
+
+Vertical slice đã hiện thực hóa một phiên bản nhỏ nhưng có thật của flow trên:
+
+- `src/oraclePresence.js` giữ state machine pure, immutable và fail-closed với các state `dormant`, `materializing`, `teaching`, `guiding`, `celebrating` và `dissolving`.
+- `PlayView` chỉ gọi Oracle qua event allowlist; hint thường và auto-hint làm Mạch materialize, action tiếp theo chuyển sang teaching, guided completion chuyển sang guiding, còn success đi qua celebration rồi dissolve trước khi rời level.
+- Visual runtime tách thành central image/core, orbit, rune fragments và teaching beam; `data-oracle-state`/`data-oracle-intensity` là contract CSS bounded, không lưu free text hay dữ liệu trẻ.
+- Khi dormant, dock vẫn giữ nút trợ giúp để trẻ chủ động gọi Mạch; manifestation được hạ intensity thay vì chiếm spotlight. `prefers-reduced-motion` vẫn là cổng an toàn cho animation.
+- Nubi companion hiện có signal local `ambient → attention → responding → resonant → recovering`, beam/burst bounded và sprite alpha có transparent margin; đây là feedback interaction, không thay thế quyết định mascot C04.
+
+Đây là prototype visual/interaction, chưa phải final IP asset và chưa biến Oracle thành Gemini live. Nội dung hint vẫn đi qua local provider boundary và curriculum-safety contract hiện có.
+
 ## Quyết định sau review
 
 - **Mascot:** C04 là hướng ưu tiên cho vòng exploration tiếp theo; chưa khóa canonical character.
@@ -120,3 +132,9 @@ Flow:
 2. `C04 Knowledge Core Anatomy`: thiết kế Core như một phần cơ thể có 4 state.
 3. `Oracle Simplification Pass`: tạo 3 mức complexity (small HUD, normal hint, full teaching manifestation).
 4. Sau khi chọn final mascot, mới tạo Evolution Line mới để tránh tiếp tục evolution trên một character chưa khóa.
+
+## C04 Originality Pass prototype — 2026-08-11
+
+Đã tạo một concept sheet review-only tại [`artifacts/nubi-c04-originality-pass-2026-08-11.png`](../artifacts/nubi-c04-originality-pass-2026-08-11.png). Sheet có sáu hướng silhouette/anatomy khác nhau, giữ emotional warmth, Knowledge Core và palette Lumora để so sánh nhanh.
+
+Đây chưa phải canonical asset và chưa được nối vào runtime. Chỉ sau khi Hieu chọn một hướng, vòng tiếp theo mới tách riêng variant được chọn thành sprite alpha, kiểm tra silhouette ở kích thước nhỏ và review lại anatomy/Core trước khi thay `nubi-transparent-v3.png`.
