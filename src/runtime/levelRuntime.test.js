@@ -1,11 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { getLevelById } from "../levelCatalog/index.js";
+import { getGradeLevels, getLevelById } from "../levelCatalog/index.js";
 import { createRuleBasedOracleProvider } from "../services/oracleProvider.js";
 import { getRendererForMechanic, auditRuntimeRendererRegistry } from "./levelRuntimeRegistry.js";
 import { resolveLevelRuntime } from "./levelRuntimeAdapter.js";
 import { getRuntimePhaseContent } from "./levelRuntimeAdapter.js";
+import { getRuntimeContent, validateRuntimeContent } from "./levelRuntimeContent.js";
 import {
   completeRuntimePhase,
   createLevelRuntimeState,
@@ -37,6 +38,10 @@ test("runtime registry resolves all ten wired Grade 1 levels by mechanic family"
   assert.deepEqual(boss.phases.map((phase) => phase.mechanicId), ["collect", "path", "simulation", "observation"]);
   assert.equal(boss.phases.length, 4);
   assert.deepEqual(boss.phases.slice(1).map((phase) => Object.keys(getRuntimePhaseContent(phase, level("g1-l010"))).filter((key) => ["sequence", "splits", "scenes"].includes(key))), [["sequence"], ["splits"], ["scenes"]]);
+  const grandBoss = resolveLevelRuntime(level("g1-l100"));
+  assert.equal(grandBoss.phases.length, 6);
+  assert.equal(grandBoss.phases.some((phase) => phase.mechanicId === "boss"), false);
+  assert.equal(grandBoss.phases.every((phase) => getLevelById(phase.sourceLevelId)?.type === "standard"), true);
   for (const grade of [1, 2, 3, 4, 5]) {
     const gradeBoss = resolveLevelRuntime(level(`g${grade}-l010`));
     assert.equal(gradeBoss.ok, true, `Grade ${grade} chapter boss should resolve`);
@@ -44,6 +49,48 @@ test("runtime registry resolves all ten wired Grade 1 levels by mechanic family"
     assert.ok(gradeBoss.phases.every((phase) => phase.rendererId));
   }
   assert.deepEqual(auditRuntimeRendererRegistry(), { valid: true, errors: [] });
+});
+
+test("every Grade 1 standard level has a reachable, chapter-aware content contract", () => {
+  const standardLevels = getGradeLevels(1).filter((item) => item.type === "standard");
+  assert.equal(standardLevels.length, 90);
+  for (const item of standardLevels) {
+    const content = getRuntimeContent(item);
+    const audit = validateRuntimeContent(item, content);
+    assert.equal(audit.valid, true, audit.errors.join("\n"));
+    assert.equal(typeof content.contentDomainVi, "string");
+    assert.ok(content.contentDomainVi.length > 0);
+    assert.equal(typeof content.promptVi, "string");
+    assert.ok(content.promptVi.length > 0);
+  }
+});
+
+test("subtract and missing-sequence variants never share an unreachable answer contract", () => {
+  const subtract = getRuntimeContent(level("g1-l008"));
+  assert.equal(subtract.variant, "subtract");
+  assert.equal(subtract.sequence, undefined);
+  assert.ok(subtract.choices.includes(subtract.correct));
+  assert.match(subtract.promptVi, /5 hạt/);
+
+  const missing = getRuntimeContent(level("g1-l071"));
+  assert.equal(missing.variant, "missing-sequence");
+  assert.equal(missing.visibleSequence[missing.missingIndex], null);
+  assert.ok(missing.choices.includes(missing.sequence[missing.missingIndex]));
+});
+
+test("Grade 1 boss phases reuse validated source-level content", () => {
+  const bosses = getGradeLevels(1).filter((item) => item.type !== "standard");
+  assert.equal(bosses.length, 10);
+  for (const boss of bosses) {
+    const resolved = resolveLevelRuntime(boss);
+    assert.equal(resolved.ok, true, `${boss.id} should resolve`);
+    for (const phase of resolved.phases) {
+      const source = getLevelById(phase.sourceLevelId);
+      assert.ok(source, `${boss.id} phase ${phase.id} should have a source level`);
+      const audit = validateRuntimeContent(source, getRuntimePhaseContent(phase, boss));
+      assert.equal(audit.valid, true, `${boss.id} phase ${phase.id}: ${audit.errors.join("; ")}`);
+    }
+  }
 });
 
 test("unknown mechanics are rejected by the adapter and renderer lookup fails safe", () => {

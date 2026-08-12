@@ -232,7 +232,7 @@ export default function LevelRuntime({
         <strong className="runtime-level-counter">{progressLabel}</strong>
       </header>
       {reviewOnly && <div className="runtime-review-banner" role="status">Bản review: chơi thật để kiểm tra logic, không ghi mở khóa, checkpoint hoặc reward.</div>}
-      <div className="runtime-objective"><span aria-hidden="true">{isBoss ? "◆" : "✦"}</span><div><b>{level.learningObjectiveVi}</b><small>{level.designBriefVi}</small></div></div>
+      <div className="runtime-objective"><span aria-hidden="true">{isBoss ? "◆" : "✦"}</span><div><b>{level.learningObjectiveVi}</b><small>{adapted.content.contentDomainVi ?? level.designBriefVi}</small></div></div>
       <div className="runtime-body">
         <div className="runtime-nubi"><span>✦</span><div><b>Nubi</b><small>{noticeTone === "guided" ? "Mạch đang soi bước cuối." : "Con vẫn là người điều khiển."}</small></div></div>
         <div className="runtime-board-container">

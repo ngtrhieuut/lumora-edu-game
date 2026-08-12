@@ -16,7 +16,7 @@ function RuntimeInstructions({ content }) {
   if (!content?.guideTitleVi && steps.length === 0) return null;
   return (
     <section className="runtime-instructions" aria-label="Cách chơi">
-      <div className="runtime-instructions-heading"><span aria-hidden="true">?</span><div><b>{content.guideTitleVi ?? "Cách chơi"}</b><small>{content.objectiveVi ?? "Làm từng bước, không cần vội."}</small></div></div>
+      <div className="runtime-instructions-heading"><span aria-hidden="true">?</span><div><b>{content.guideTitleVi ?? "Cách chơi"}</b><small>{content.promptVi ?? content.objectiveVi ?? "Làm từng bước, không cần vội."}</small>{content.contentDomainVi && <em>{content.contentDomainVi}</em>}</div></div>
       <ol>{steps.slice(0, 3).map((step, index) => <li key={`${index}-${step}`}><b>{index + 1}</b><span>{step}</span></li>)}</ol>
       {content.ruleVi && <p><strong>Quy tắc:</strong> {content.ruleVi}</p>}
     </section>
@@ -55,7 +55,7 @@ export function CollectRenderer({ content, guided, onAction, onAttempt, onFinish
     if (picked.includes(item.id)) return;
     onAction();
     if (!item.correct) {
-      fail(onAttempt, "wrong-object", "Hạt này còn ngủ. Hãy tìm hạt đang phát sáng.");
+      fail(onAttempt, "wrong-object", content.wrongChoiceMessageVi ?? "Mảnh này chưa phù hợp với mục tiêu. Hãy quan sát dấu hiệu rồi thử lại.");
       return;
     }
     succeed(onAttempt);
@@ -65,10 +65,10 @@ export function CollectRenderer({ content, guided, onAction, onAttempt, onFinish
   }
 
   return (
-    <RuntimeBoardFrame label="Cổng đếm và ghép số với số lượng" status={`${picked.length}/${target} hạt sáng`}>
-      <div className="runtime-scene runtime-collect-scene"><span className="runtime-orb">✦</span><p>Đưa đủ hạt sáng về Lõi.</p><small>Không có đồng hồ đếm ngược.</small></div>
-      <div className="runtime-token-grid" role="list" aria-label="Các hạt trong khu rừng">
-        {items.map((item) => <RuntimeToken key={item.id} guided={guided && item === nextCorrect} disabled={picked.includes(item.id)} className={item.correct ? "is-light" : "is-dormant"} onClick={() => choose(item)}>{item.symbol ?? "✦"}</RuntimeToken>)}
+    <RuntimeBoardFrame label={content.boardLabelVi ?? "Trạm chọn vật phù hợp"} status={`${picked.length}/${target} ${content.countLabelVi ?? "vật đúng"}`}>
+      <div className="runtime-scene runtime-collect-scene"><span className="runtime-orb">✦</span><p>{content.promptVi ?? "Đưa đủ hạt sáng về Lõi."}</p><small>{content.helperVi ?? "Không có đồng hồ đếm ngược."}</small></div>
+      <div className="runtime-token-grid" role="list" aria-label={content.itemsLabelVi ?? "Các lựa chọn của bài"}>
+        {items.map((item) => <RuntimeToken key={item.id} guided={guided && item === nextCorrect} disabled={picked.includes(item.id)} className={item.correct ? "is-light" : "is-dormant"} onClick={() => choose(item)}><span>{item.symbol ?? "✦"}</span>{item.label && <small>{item.label}</small>}</RuntimeToken>)}
       </div>
       <div className="runtime-target-core" aria-label="Lõi nhận hạt sáng"><b>{picked.length}</b><span>/ {target}</span><small>{picked.length === target ? "Lõi đã đủ ánh sáng." : "Chạm hạt sáng để nạp Lõi."}</small></div>
     </RuntimeBoardFrame>
@@ -92,7 +92,7 @@ export function SlotFillRenderer({ content, guided, onAction, onAttempt, onFinis
     if (filled[slot.id] !== undefined) return;
     if (selected !== slot.expected) {
       setSelected(null);
-      fail(onAttempt, "wrong-slot", "Mảnh này chưa nối đúng vị trí. Hãy nhìn số ở giữa.");
+      fail(onAttempt, "wrong-slot", content.wrongChoiceMessageVi ?? "Mảnh này chưa đúng với ô đang sáng. Hãy đối chiếu dấu hiệu ở giữa và nhãn của ô.");
       return;
     }
     succeed(onAttempt);
@@ -103,14 +103,15 @@ export function SlotFillRenderer({ content, guided, onAction, onAttempt, onFinis
   }
 
   return (
-    <RuntimeBoardFrame label="Cầu Pha Lê với các slot số trước và sau" status={`${Object.keys(filled).length}/${slots.length} slot đã sáng`}>
-      <div className="runtime-sequence-bridge"><span className="runtime-number-node">{centerValue}</span><span className="runtime-bridge-line" /><span className="runtime-number-node is-missing">?</span></div>
+    <RuntimeBoardFrame label={content.boardLabelVi ?? "Trạm điền phần còn thiếu"} status={`${Object.keys(filled).length}/${slots.length} ô đã điền`}>
+      <div className="runtime-sequence-bridge"><span className={`runtime-number-node ${content.centerLabel ? "is-label" : ""}`}>{content.centerLabel ?? centerValue}</span><span className="runtime-bridge-line" /><span className="runtime-number-node is-missing">?</span></div>
       <div className="runtime-slot-grid">
         {slots.map((slot) => <button key={slot.id} type="button" className={`runtime-slot ${filled[slot.id] !== undefined ? "is-filled" : ""} ${guided && nextSlot?.id === slot.id ? "is-guided" : ""}`} disabled={filled[slot.id] !== undefined} onClick={() => place(slot)}><span>{filled[slot.id] ?? "?"}</span><small>{slot.label}</small></button>)}
       </div>
       <div className="runtime-choice-row" aria-label="Các mảnh số">
         {choices.map((choice) => <RuntimeToken key={choice} selected={selected === choice} guided={guided && nextSlot?.expected === choice} disabled={Object.values(filled).includes(choice)} onClick={() => { onAction(); setSelected(choice); }}>{choice}</RuntimeToken>)}
       </div>
+      <p className="runtime-helper">{content.helperVi ?? "Chọn mảnh rồi chạm vào ô đang sáng."}</p>
     </RuntimeBoardFrame>
   );
 }
@@ -130,7 +131,7 @@ export function SortRenderer({ content, guided, onAction, onAttempt, onFinish })
     }
     if (selected.bucket !== bucket.id) {
       setSelected(null);
-      fail(onAttempt, "wrong-bucket", "Cổng này chưa hợp với số lượng đang nhìn thấy.");
+      fail(onAttempt, "wrong-bucket", content.wrongChoiceMessageVi ?? "Cổng này chưa phù hợp với nhóm đang chọn. Hãy so sánh đặc điểm rồi thử lại.");
       return;
     }
     succeed(onAttempt);
@@ -141,10 +142,10 @@ export function SortRenderer({ content, guided, onAction, onAttempt, onFinish })
   }
 
   return (
-    <RuntimeBoardFrame label="Tháp Cổ phân loại nhóm nhiều hơn và ít hơn" status={`${Object.keys(placed).length}/${items.length} cụm đã đặt`}>
-      <div className="runtime-sort-scene"><span>◌</span>{items.map((item) => <span key={item.id}>{"✦ ".repeat(item.count).trim()}<small>{item.label}</small></span>)}<small>So sánh bằng mắt và đếm từng nhóm.</small></div>
+    <RuntimeBoardFrame label={content.boardLabelVi ?? "Trạm phân loại theo dấu hiệu"} status={`${Object.keys(placed).length}/${items.length} nhóm đã đặt`}>
+      <div className="runtime-sort-scene"><span>◌</span>{items.map((item) => <span key={item.id}>{item.symbol ? `${item.symbol} `.repeat(Math.min(item.count ?? 1, 7)).trim() : "✦"}<small>{item.label}</small></span>)}<small>{content.helperVi ?? "So sánh bằng mắt và đếm từng nhóm."}</small></div>
       <div className="runtime-choice-row runtime-sort-items">
-        {items.map((item) => <RuntimeToken key={item.id} selected={selected?.id === item.id} guided={guided && nextItem?.id === item.id} disabled={placed[item.id] !== undefined} onClick={() => { onAction(); setSelected(item); }}><span className="runtime-count-dots">{"✦ ".repeat(item.count).trim()}</span><small>{item.label}</small></RuntimeToken>)}
+        {items.map((item) => <RuntimeToken key={item.id} selected={selected?.id === item.id} guided={guided && nextItem?.id === item.id} disabled={placed[item.id] !== undefined} onClick={() => { onAction(); setSelected(item); }}><span className="runtime-count-dots">{item.symbol ? `${item.symbol} `.repeat(Math.min(item.count ?? 1, 7)).trim() : "✦"}</span><small>{item.label}</small></RuntimeToken>)}
       </div>
       <div className="runtime-bucket-grid">
         {buckets.map((bucket) => <button key={bucket.id} type="button" className={`runtime-bucket ${guided && nextItem?.bucket === bucket.id ? "is-guided" : ""}`} onClick={() => place(bucket)}><span>{bucket.id === "more" ? "↑" : "↓"}</span><b>{bucket.label}</b></button>)}
@@ -163,7 +164,7 @@ export function PathRenderer({ content, guided, onAction, onAttempt, onFinish })
     if (placed.includes(value)) return;
     onAction();
     if (value !== expected) {
-      fail(onAttempt, "wrong-path-step", "Con đường cần đi từ số nhỏ đến số lớn.");
+      fail(onAttempt, "wrong-path-step", content.wrongChoiceMessageVi ?? "Chưa đúng thứ tự. Hãy nhìn quy tắc của dãy rồi thử lại.");
       return;
     }
     succeed(onAttempt);
@@ -173,12 +174,12 @@ export function PathRenderer({ content, guided, onAction, onAttempt, onFinish })
   }
 
   return (
-    <RuntimeBoardFrame label="Dòng Năng Lượng xếp các số thành đường đi" status={`${placed.length}/${sequence.length} bậc đã nối`}>
+    <RuntimeBoardFrame label={content.boardLabelVi ?? "Trạm nối các bước theo quy luật"} status={`${placed.length}/${sequence.length} bước đã nối`}>
       <div className="runtime-path"><span className="runtime-path-tree">🌱</span>{sequence.map((value, index) => <span key={value} className={`runtime-path-step ${index < placed.length ? "is-lit" : index === placed.length ? "is-active" : ""}`}>{index < placed.length ? value : "?"}</span>)}<span className="runtime-path-tree">🌳</span></div>
       <div className="runtime-choice-row">
         {choices.map((value) => <RuntimeToken key={value} guided={guided && value === expected} disabled={placed.includes(value)} onClick={() => choose(value)}>{value}</RuntimeToken>)}
       </div>
-      <p className="runtime-helper">Chọn bậc tiếp theo để Linh Thú leo lên cây.</p>
+      <p className="runtime-helper">{content.helperVi ?? "Chọn bước tiếp theo để hoàn thành đường đi."}</p>
     </RuntimeBoardFrame>
   );
 }
@@ -191,17 +192,31 @@ export function BuildRepairRenderer({ content, guided, onAction, onAttempt, onFi
   const [filled, setFilled] = useState([]);
   const nextSlot = filled.length;
 
+  function choiceId(choice) {
+    return typeof choice === "object" ? choice?.id : choice;
+  }
+
+  function choiceLabel(choice) {
+    return typeof choice === "object" ? choice?.label ?? choice?.id : choice === "extra" ? "Mảnh thừa" : "Mảnh sáng";
+  }
+
+  function choiceSymbol(choice) {
+    return typeof choice === "object" ? choice?.symbol ?? "✦" : choice === "extra" ? "◇" : "✦";
+  }
+
   function place(slot) {
     onAction();
     if (selected === null) {
       fail(onAttempt, "no-selection", "Hãy chọn một mảnh rồi sửa ô đang nhấp nháy.");
       return;
     }
-    const expected = `firefly-${slot + 1}`;
-    const correct = choices.includes(expected) ? selected === expected : selected !== "extra";
+    const expected = Array.isArray(content.slotChoices) ? content.slotChoices[slot] : `firefly-${slot + 1}`;
+    const correct = Array.isArray(content.slotChoices)
+      ? selected === expected
+      : choices.some((choice) => choiceId(choice) === expected) ? selected === expected : selected !== "extra";
     if (!correct) {
       setSelected(null);
-      fail(onAttempt, "wrong-piece", "Mảnh này chưa khớp với ô đang thiếu. Con thử mảnh khác nhé.");
+      fail(onAttempt, "wrong-piece", content.wrongChoiceMessageVi ?? "Mảnh này chưa khớp với ô đang thiếu. Hãy thử mảnh có dấu hiệu phù hợp hơn.");
       return;
     }
     succeed(onAttempt);
@@ -212,12 +227,12 @@ export function BuildRepairRenderer({ content, guided, onAction, onAttempt, onFi
   }
 
   return (
-    <RuntimeBoardFrame label="Kho Báu tạo đúng số lượng bằng các mảnh sáng" status={`${filled.length}/${target} ô tổ đã sáng`}>
-      <div className="runtime-build-structure"><span className="runtime-build-roof">⌂</span><div>{slots.map((slot) => <button key={slot} type="button" className={`runtime-build-slot ${slot < filled.length ? "is-filled" : slot === nextSlot ? "is-active" : ""}`} onClick={() => place(slot)} disabled={slot < filled.length}>{slot < filled.length ? "✦" : "+"}</button>)}</div></div>
+    <RuntimeBoardFrame label={content.boardLabelVi ?? "Kho Báu tạo đúng số lượng bằng các mảnh sáng"} status={`${filled.length}/${target} mảnh đã đặt`}>
+      <div className="runtime-build-structure"><span className="runtime-build-roof">⌂</span><strong>{content.structureLabelVi ?? "Cấu trúc đang sửa"}</strong><div>{slots.map((slot) => <button key={slot} type="button" className={`runtime-build-slot ${slot < filled.length ? "is-filled" : slot === nextSlot ? "is-active" : ""}`} onClick={() => place(slot)} disabled={slot < filled.length}><span>{slot < filled.length ? "✦" : "+"}</span>{content.slotLabels?.[slot] && <small>{content.slotLabels[slot]}</small>}</button>)}</div></div>
       <div className="runtime-choice-row">
-        {choices.map((choice) => <RuntimeToken key={choice} selected={selected === choice} guided={guided && choice === `firefly-${nextSlot + 1}`} disabled={filled.includes(choice)} onClick={() => { onAction(); setSelected(choice); }}>{choice === "extra" ? "◇" : "✦"}</RuntimeToken>)}
+        {choices.map((choice) => { const id = choiceId(choice); return <RuntimeToken key={id} selected={selected === id} guided={guided && id === (content.slotChoices?.[nextSlot] ?? `firefly-${nextSlot + 1}`)} disabled={filled.includes(id)} onClick={() => { onAction(); setSelected(id); }}><span>{choiceSymbol(choice)}</span><small>{choiceLabel(choice)}</small></RuntimeToken>; })}
       </div>
-      <p className="runtime-helper">Đưa vừa đủ đom đóm vào tổ; mảnh thừa không làm mất lượt.</p>
+      <p className="runtime-helper">{content.helperVi ?? "Chọn mảnh rồi chạm vào ô đang sáng. Mảnh thừa không làm mất lượt."}</p>
     </RuntimeBoardFrame>
   );
 }
@@ -235,7 +250,7 @@ export function SimulationRenderer({ content, guided, onAction, onAttempt, onFin
     if (chosen) return;
     onAction();
     if (option.id !== correctId && option.correct !== true) {
-      fail(onAttempt, "unbalanced-split", "Hai nhánh cần giữ đủ số hạt ban đầu. Hãy thử cách chia khác.");
+      fail(onAttempt, "unbalanced-split", content.wrongChoiceMessageVi ?? "Lựa chọn này chưa giữ đúng điều kiện của bài. Hãy kiểm tra hai phần rồi thử lại.");
       return;
     }
     succeed(onAttempt);
@@ -244,11 +259,12 @@ export function SimulationRenderer({ content, guided, onAction, onAttempt, onFin
   }
 
   return (
-    <RuntimeBoardFrame label="Trạm Gió mô phỏng tách một nhóm thành hai phần" status={chosen ? "Hai nhánh đang giữ ánh sáng" : `${content.total ?? 6} hạt đang ở lõi`}>
-      <div className="runtime-simulation-core"><span>{content.total ?? 6}</span><small>hạt trong Lõi</small><i>↙</i><i>↘</i></div>
+    <RuntimeBoardFrame label={content.boardLabelVi ?? "Trạm kiểm tra một lựa chọn"} status={chosen ? "Đã chọn cách phù hợp" : content.total ? `${content.total} hạt đang ở lõi` : content.statusIdleVi ?? "Chọn một cách phù hợp"}>
+      <div className="runtime-simulation-core"><span>{content.coreLabel ?? content.total ?? "?"}</span><small>{content.coreHint ?? (content.total ? "hạt trong Lõi" : content.contentDomainVi ?? "Dữ kiện của bài")}</small><i>↙</i><i>↘</i></div>
       <div className="runtime-split-grid">
-        {options.map((option) => <button key={option.id} type="button" className={`runtime-split-option ${chosen === option.id ? "is-chosen" : ""} ${guided && option.id === correctId ? "is-guided" : ""}`} onClick={() => choose(option)}><strong>{option.left} <span>+</span> {option.right}</strong><small>{option.label ?? "Cách chia này"}</small></button>)}
+        {options.map((option) => <button key={option.id} type="button" className={`runtime-split-option ${chosen === option.id ? "is-chosen" : ""} ${guided && option.id === correctId ? "is-guided" : ""}`} onClick={() => choose(option)}><strong>{option.detail ?? `${option.left} + ${option.right}`}</strong><small>{option.label ?? "Cách này"}</small></button>)}
       </div>
+      <p className="runtime-helper">{content.helperVi ?? content.promptVi ?? "So sánh các lựa chọn rồi kiểm tra kết quả."}</p>
     </RuntimeBoardFrame>
   );
 }
@@ -262,8 +278,9 @@ export function MatchRenderer({ content, guided, onAction, onAttempt, onFinish }
   function choose(pair) {
     if (matched.includes(pair.id)) return;
     onAction();
-    if (pair.total !== targetTotal) {
-      fail(onAttempt, "merge-total", "Hai nhóm này chưa tạo ra dòng sáng cần tìm. Hãy gộp rồi đếm lại.");
+    const correct = pair.correct === true || (pair.correct !== false && pair.total === targetTotal);
+    if (!correct) {
+      fail(onAttempt, "merge-total", content.wrongChoiceMessageVi ?? "Dòng này chưa khớp yêu cầu. Hãy kiểm tra mối liên hệ giữa hai phần.");
       return;
     }
     succeed(onAttempt);
@@ -273,10 +290,10 @@ export function MatchRenderer({ content, guided, onAction, onAttempt, onFinish }
   }
 
   return (
-    <RuntimeBoardFrame label="Vườn Sáng gộp hai nhóm bằng thao tác trực quan" status={`${matched.length}/${pairs.length} dòng đã hợp nhất`}>
-      <div className="runtime-merge-core"><span>✦</span><small>Hai nhóm → một Lõi</small></div>
+    <RuntimeBoardFrame label={content.boardLabelVi ?? "Trạm ghép các phần theo mối liên hệ"} status={`${matched.length}/${pairs.length} dòng đã kiểm tra`}>
+      <div className="runtime-merge-core"><span>✦</span><small>{content.mergeLabelVi ?? "Ghép các phần → kết quả"}</small></div>
       <div className="runtime-pair-grid">
-        {pairs.map((pair) => <button key={pair.id} type="button" className={`runtime-pair-card ${matched.includes(pair.id) ? "is-matched" : ""} ${guided && nextPair?.id === pair.id ? "is-guided" : ""}`} onClick={() => choose(pair)} disabled={matched.includes(pair.id)}><span>{"✦ ".repeat(pair.left).trim()}</span><b>+</b><span>{"✦ ".repeat(pair.right).trim()}</span><strong>= {pair.total}</strong></button>)}
+        {pairs.map((pair) => <button key={pair.id} type="button" className={`runtime-pair-card ${matched.includes(pair.id) ? "is-matched" : ""} ${guided && nextPair?.id === pair.id ? "is-guided" : ""}`} onClick={() => choose(pair)} disabled={matched.includes(pair.id)}><span>{pair.leftLabel ?? "✦ ".repeat(Math.max(0, Number(pair.left) || 0)).trim()}</span><b>{pair.operator ?? (pair.total === undefined ? "→" : "+")}</b><span>{pair.rightLabel ?? "✦ ".repeat(Math.max(0, Number(pair.right) || 0)).trim()}</span><strong>{pair.total === undefined ? "Mối liên hệ đúng" : `= ${pair.total}`}</strong></button>)}
       </div>
     </RuntimeBoardFrame>
   );
@@ -286,29 +303,41 @@ export function SequenceRenderer({ content, guided, onAction, onAttempt, onFinis
   const sequence = Array.isArray(content.sequence) ? content.sequence : null;
   const choices = Array.isArray(content.choices) ? content.choices : [];
   const [placed, setPlaced] = useState([]);
-  const expected = sequence ? sequence[placed.length] : content.correct;
-  const complete = sequence ? placed.length >= sequence.length : placed.length > 0;
+  const isSubtract = content.variant === "subtract";
+  const isMissingSequence = content.variant === "missing-sequence";
+  const expected = isSubtract
+    ? content.correct
+    : isMissingSequence
+      ? content.sequence?.[content.missingIndex]
+      : sequence ? sequence[placed.length] : content.correct;
+  const complete = isSubtract || isMissingSequence ? placed.length > 0 : sequence ? placed.length >= sequence.length : placed.length > 0;
 
   function choose(value) {
     if (complete) return;
     onAction();
     if (value !== expected) {
-      fail(onAttempt, "wrong-sequence", sequence ? "Nhìn lại bậc đang thiếu rồi chọn số kế tiếp." : "Hãy tìm xem cần bớt bao nhiêu vật để còn đúng số.");
+      fail(onAttempt, "wrong-sequence", content.wrongChoiceMessageVi ?? (isSubtract ? "Hãy tính số cần bớt để còn đúng số." : "Chưa đúng bước. Hãy đối chiếu quy tắc của dãy rồi thử lại."));
       return;
     }
     succeed(onAttempt);
     const next = [...placed, value];
     setPlaced(next);
-    if (sequence ? next.length === sequence.length : true) onFinish();
+    if (isSubtract || isMissingSequence || (sequence ? next.length === sequence.length : true)) onFinish();
   }
 
   return (
-    <RuntimeBoardFrame label="Máy Cổ sắp xếp hoặc bớt vật theo trình tự" status={sequence ? `${placed.length}/${sequence.length} bước` : complete ? "Đã bớt đúng số vật" : `Nhóm đang có ${content.start ?? 5} vật`}>
-      <div className="runtime-subtract-scene"><span>{"✦ ".repeat(Math.max(0, (content.start ?? 5) - placed.length)).trim()}</span><small>{sequence ? "Xếp các bậc theo thứ tự." : "Gỡ vật bị corruption để giữ lại đúng lượng."}</small></div>
+    <RuntimeBoardFrame label={content.boardLabelVi ?? "Máy Cổ tìm bước còn thiếu hoặc bớt vật"} status={isSubtract ? (complete ? "Đã kiểm tra phép tính" : "Chọn số hạt cần bớt") : isMissingSequence ? (complete ? "Đã điền bước còn thiếu" : "Chọn bước còn thiếu") : `${placed.length}/${sequence?.length ?? 0} bước`}>
+      {isSubtract ? (
+        <div className="runtime-subtract-scene"><span>{"✦ ".repeat(Math.max(0, (content.start ?? 5) - (complete ? (content.correct ?? 0) : 0))).trim()}</span><strong>{content.start ?? 5} − {complete ? content.correct : "?"} = {content.target ?? "?"}</strong><small>{content.promptVi ?? "Chọn số hạt cần lấy ra để còn đúng số."}</small></div>
+      ) : isMissingSequence ? (
+        <div className="runtime-subtract-scene"><div className="runtime-missing-sequence">{(content.visibleSequence ?? sequence ?? []).map((value, index) => <span key={`${index}-${value ?? "missing"}`} className={value === null ? "is-missing" : ""}>{value ?? "?"}</span>)}</div><small>{content.helperVi ?? "Nhìn các bước đã có rồi tìm ô có dấu hỏi."}</small></div>
+      ) : (
+        <div className="runtime-subtract-scene"><span>{"✦ ".repeat(Math.max(0, (content.start ?? 5) - placed.length)).trim()}</span><small>{content.promptVi ?? "Xếp các bậc theo thứ tự."}</small></div>
+      )}
       <div className="runtime-choice-row">
         {choices.map((choice) => <RuntimeToken key={choice} guided={guided && choice === expected} disabled={placed.includes(choice)} onClick={() => choose(choice)}>{choice}</RuntimeToken>)}
       </div>
-      <p className="runtime-helper">Mỗi lựa chọn đúng sẽ làm máy sáng thêm một nhịp.</p>
+      <p className="runtime-helper">{content.helperVi ?? "Mỗi lựa chọn đúng sẽ làm máy sáng thêm một nhịp."}</p>
     </RuntimeBoardFrame>
   );
 }
@@ -322,7 +351,7 @@ export function ObservationRenderer({ content, guided, onAction, onAttempt, onFi
     if (selected) return;
     onAction();
     if (!scene.correct) {
-      fail(onAttempt, "insufficient-evidence", "Hãy quan sát xem mỗi bạn đã có đủ đồ dùng chưa.");
+      fail(onAttempt, "insufficient-evidence", content.wrongChoiceMessageVi ?? "Cảnh này chưa đủ bằng chứng. Hãy đối chiếu các dấu hiệu với yêu cầu.");
       return;
     }
     succeed(onAttempt);
@@ -331,10 +360,10 @@ export function ObservationRenderer({ content, guided, onAction, onAttempt, onFi
   }
 
   return (
-    <RuntimeBoardFrame label="Đường Sao quan sát bằng chứng trong cảnh" status={selected ? "Đã tìm thấy cảnh đủ đồ" : "Đang quan sát"}>
-      <div className="runtime-observation-banner"><span>⌁</span><p>Không cần đoán nhanh. Hãy nhìn từng nhóm vật thể.</p></div>
+    <RuntimeBoardFrame label={content.boardLabelVi ?? "Đường Sao quan sát bằng chứng trong cảnh"} status={selected ? "Đã chọn cảnh phù hợp" : "Đang quan sát"}>
+      <div className="runtime-observation-banner"><span>⌁</span><p>{content.promptVi ?? "Không cần đoán nhanh. Hãy nhìn từng nhóm vật thể."}</p></div>
       <div className="runtime-observation-grid">
-        {scenes.map((scene) => <button key={scene.id} type="button" className={`runtime-observation-card ${selected === scene.id ? "is-selected" : ""} ${guided && scene.id === correctScene?.id ? "is-guided" : ""}`} onClick={() => choose(scene)}><strong>{scene.label}</strong><span>🪑 {scene.seats}　🥛 {scene.cups}　🍎 {scene.fruit}</span><small>Chạm để kiểm tra cảnh</small></button>)}
+        {scenes.map((scene) => <button key={scene.id} type="button" className={`runtime-observation-card ${selected === scene.id ? "is-selected" : ""} ${guided && scene.id === correctScene?.id ? "is-guided" : ""}`} onClick={() => choose(scene)}><strong>{scene.label}</strong><span>{scene.evidence ?? (scene.seats !== undefined ? `🪑 ${scene.seats}　🥛 ${scene.cups}　🍎 ${scene.fruit}` : "Quan sát dấu hiệu trong cảnh")}</span><small>{scene.detail ?? "Chạm để kiểm tra cảnh"}</small></button>)}
       </div>
     </RuntimeBoardFrame>
   );
@@ -347,12 +376,14 @@ export function DataRenderer({ content, guided, onAction, onAttempt, onFinish })
   ];
   const [selected, setSelected] = useState(null);
   const correct = options.find((option) => option.correct) ?? options[0];
+  const chart = Array.isArray(content.chart) && content.chart.length ? content.chart : [34, 68, 48, 82];
+  const chartLabels = Array.isArray(content.chartLabels) ? content.chartLabels : [];
 
   function choose(option) {
     if (selected) return;
     onAction();
     if (!option.correct) {
-      fail(onAttempt, "data-misread", "Hãy nhìn cột sáng cao hơn trước khi chọn.");
+      fail(onAttempt, "data-misread", content.wrongChoiceMessageVi ?? "Lựa chọn này chưa khớp dữ kiện. Hãy đọc lại dấu hiệu trước khi chọn.");
       return;
     }
     succeed(onAttempt);
@@ -361,9 +392,10 @@ export function DataRenderer({ content, guided, onAction, onAttempt, onFinish })
   }
 
   return (
-    <RuntimeBoardFrame label="Nhiệm vụ dữ liệu trực quan" status={selected ? "Đã đọc được tín hiệu" : "Đang đọc tín hiệu"}>
-      <div className="runtime-data-chart" aria-label="Biểu đồ cột trực quan"><i style={{ height: "34%" }} /><i style={{ height: "68%" }} /><i style={{ height: "48%" }} /><i style={{ height: "82%" }} /></div>
-      <div className="runtime-observation-grid">{options.map((option) => <button key={option.id} type="button" className={`runtime-observation-card ${selected === option.id ? "is-selected" : ""} ${guided && option.id === correct.id ? "is-guided" : ""}`} onClick={() => choose(option)}><strong>{option.label}</strong><small>Đưa bằng chứng vào quyết định</small></button>)}</div>
+    <RuntimeBoardFrame label={content.boardLabelVi ?? "Nhiệm vụ dữ liệu trực quan"} status={selected ? "Đã đọc được tín hiệu" : "Đang đọc tín hiệu"}>
+      <p className="runtime-helper">{content.promptVi ?? "Đọc dữ kiện trước rồi chọn kết luận."}</p>
+      <div className="runtime-data-chart" aria-label="Biểu đồ cột trực quan">{chart.map((value, index) => <i key={`${value}-${index}`} style={{ height: `${Math.max(8, Math.min(100, value))}%` }}><small>{chartLabels[index] ?? `Dữ kiện ${index + 1}`}</small></i>)}</div>
+      <div className="runtime-observation-grid">{options.map((option) => <button key={option.id} type="button" className={`runtime-observation-card ${selected === option.id ? "is-selected" : ""} ${guided && option.id === correct.id ? "is-guided" : ""}`} onClick={() => choose(option)}><strong>{option.label}</strong><small>{option.detail ?? "Đưa bằng chứng vào quyết định"}</small></button>)}</div>
     </RuntimeBoardFrame>
   );
 }

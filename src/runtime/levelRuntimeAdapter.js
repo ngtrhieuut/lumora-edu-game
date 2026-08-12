@@ -22,7 +22,7 @@ const PHASE_LABEL_BY_MECHANIC = Object.freeze({
 
 function pickReviewLevelIds(level) {
   const reviewLevelIds = Array.isArray(level?.boss?.reviewLevelIds)
-    ? level.boss.reviewLevelIds.filter((levelId) => getLevelById(levelId))
+    ? level.boss.reviewLevelIds.filter((levelId) => getLevelById(levelId)?.type === "standard")
     : [];
   const phaseCount = Number.isInteger(level?.boss?.phaseCount) ? level.boss.phaseCount : 0;
   if (reviewLevelIds.length <= phaseCount) return reviewLevelIds;

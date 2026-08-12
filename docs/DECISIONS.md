@@ -548,3 +548,13 @@
 **UX boundary:** Mỗi mechanic hiển thị mục tiêu, 3 bước thao tác và quy tắc ngắn; visual count/choice lấy từ content thay vì số minh họa hard-code. Oracle local vẫn là fallback mặc định.
 
 **Verification:** `npm test` `339/339`, `npm run build`, browser QA đã hoàn tất `g1-l010` qua 4 phase/checkpoint, kiểm tra Grade 5 Grand Boss 6 phase và review level ở Chapter 2; không có Vite overlay hoặc console error.
+
+## 2026-08-12 - Grade 1 phải có content contract theo miền học và route theo chặng
+
+**Decision:** Thay content số minh họa dùng chung bằng 10 profile Grade 1 theo chapter. Mỗi profile cung cấp stimulus, prompt, rule, hint và đáp án có thể đạt cho đúng learning domain; `validateRuntimeContent()` fail-closed nếu thiếu prompt, bước, đáp án hoặc có đáp án không thể hoàn thành. Bài `g1-l008` dùng contract phép trừ riêng (`5 − ? = 3`), còn bài sequence dùng variant điền ô trống có `visibleSequence` và `missingIndex`.
+
+**Interaction boundary:** `CatalogCampaignView` hiển thị Grade 1 như route 10 chặng, phân biệt rõ `Đã khôi phục`, `Đang mở` và `Cần đi tiếp từ chặng trước`. Level bị khóa vẫn có `Thử bản review`; review không ghi progress, checkpoint hoặc reward. Renderer dùng `boardLabelVi`, slot label và stimulus theo content thay vì nhãn kho báu/số lượng hard-code.
+
+**Boss boundary:** `boss.reviewLevelIds` chỉ chọn level `standard`, tránh Grand Boss gọi lồng chapter boss. Tất cả 90 standard level và phase boss Grade 1 được kiểm tra bằng cùng content validator.
+
+**Verification:** `src/runtime/levelRuntime.test.js`, `npm test` `342/342`, `npm run build`, browser QA cho route, bài trừ, lắp ghép cơ thể, dãy thời tiết và completion review; không có browser console error.

@@ -7,6 +7,23 @@ function levelStatus(level, progress) {
   return "locked";
 }
 
+function chapterRouteState(progress, grade, chapter) {
+  const chapterLevels = getChapterLevels(grade, chapter);
+  const chapterProgress = getChapterProgress(progress, grade, chapter);
+  const firstLevel = chapterLevels[0];
+  const unlocked = Boolean(firstLevel && isLevelUnlocked(firstLevel.id, progress));
+  return {
+    chapter,
+    title: firstLevel?.chapterTitleVi ?? `Chương ${chapter}`,
+    fantasy: firstLevel?.fantasyVi ?? "",
+    subject: firstLevel?.subject ?? "",
+    completedCount: chapterProgress.completedCount,
+    totalCount: chapterProgress.totalCount,
+    complete: chapterProgress.complete,
+    state: chapterProgress.complete ? "completed" : unlocked ? "available" : "locked",
+  };
+}
+
 export function CatalogMapView({
   progress,
   onStart,
@@ -21,6 +38,7 @@ export function CatalogMapView({
   const chapterProgress = getChapterProgress(progress, grade, chapter);
   const nextInChapter = getNextPlayableLevel(progress, levels, { grade });
   const nextBoundary = getNextPlayableLevel(progress, undefined, { grade });
+  const route = Array.from({ length: 10 }, (_, index) => chapterRouteState(progress, grade, index + 1));
 
   return (
     <main className="catalog-map-view" aria-labelledby="catalog-map-title">
@@ -36,14 +54,23 @@ export function CatalogMapView({
 
       <section className="catalog-map-intro">
         <span aria-hidden="true">✦</span>
-        <div><b>Chọn lớp → chọn chương → chơi theo mechanic</b><small>Chặng mở khóa theo prerequisite. “Thử bản review” không ghi progress hay reward.</small></div>
+        <div><b>Đi theo đường sáng, từng chặng một</b><small>Hoàn thành chặng trước để mở chặng sau. Bạn vẫn có thể thử bản review mà không ghi progress hay reward.</small></div>
       </section>
 
       <nav className="catalog-grade-tabs" aria-label="Chọn lớp">
         {[1, 2, 3, 4, 5].map((item) => <button key={item} type="button" className={item === grade ? "is-active" : ""} onClick={() => onGradeChange?.(item)}>Lớp {item}</button>)}
       </nav>
-      <nav className="catalog-chapter-tabs" aria-label="Chọn chương">
-        {Array.from({ length: 10 }, (_, index) => index + 1).map((item) => <button key={item} type="button" className={item === chapter ? "is-active" : ""} onClick={() => onChapterChange?.(item)}>Chương {item}</button>)}
+      <nav className="catalog-chapter-route" aria-label={`Lộ trình Lớp ${grade}`}>
+        <div className="catalog-route-heading"><span>Lộ trình Lớp {grade}</span><small>Chạm một chặng để xem các bài bên trong</small></div>
+        <ol>
+          {route.map((item) => <li key={item.chapter} className={`catalog-route-item ${item.state} ${item.chapter === chapter ? "is-current" : ""}`}>
+            <button type="button" onClick={() => onChapterChange?.(item.chapter)} aria-current={item.chapter === chapter ? "step" : undefined}>
+              <span className="catalog-route-marker">{item.complete ? "✓" : item.chapter}</span>
+              <span className="catalog-route-copy"><strong>Chặng {item.chapter}</strong><b>{item.title}</b><small>{item.subject} · {item.completedCount}/{item.totalCount} bài · {item.state === "locked" ? "Cần đi tiếp từ chặng trước" : item.state === "completed" ? "Đã khôi phục" : "Đang mở"}</small></span>
+              <span className="catalog-route-arrow" aria-hidden="true">{item.chapter === chapter ? "●" : "›"}</span>
+            </button>
+          </li>)}
+        </ol>
       </nav>
 
       <div className="catalog-level-grid" aria-label={`Các level Lớp ${grade} Chương ${chapter}`}>
