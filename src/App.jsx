@@ -235,6 +235,9 @@ export default function App() {
   const [catalogProgress, setCatalogProgress] = useState(readCatalogProgress);
   const [selectedCatalogLevelId, setSelectedCatalogLevelId] = useState("g1-l001");
   const [lastCatalogResult, setLastCatalogResult] = useState(null);
+  const [catalogGrade, setCatalogGrade] = useState(1);
+  const [catalogChapter, setCatalogChapter] = useState(1);
+  const [catalogReviewOnly, setCatalogReviewOnly] = useState(false);
   const [selectedNodeId, setSelectedNodeId] = useState("collect");
   const [selectedQuestId, setSelectedQuestId] = useState(null);
   const [roundKey, setRoundKey] = useState(0);
@@ -462,17 +465,25 @@ export default function App() {
     setView("catalog-map");
   }
 
-  function startCatalogLevel(level) {
-    if (!level || level.grade !== 1 || level.order > 10) return;
-    if (!isLevelUnlocked(level.id, catalogProgress, ALL_LEVELS)) return;
+  function startCatalogLevel(level, { reviewOnly = false } = {}) {
+    if (!level) return;
+    if (!reviewOnly && !isLevelUnlocked(level.id, catalogProgress, ALL_LEVELS)) return;
+    setCatalogGrade(level.grade);
+    setCatalogChapter(level.chapter);
     setSelectedCatalogLevelId(level.id);
     setLastCatalogResult(null);
+    setCatalogReviewOnly(reviewOnly);
     setView("catalog-play");
   }
 
   function completeCatalogLevel(result) {
     const level = getLevelById(result?.levelId ?? selectedCatalogLevelId);
     if (!level) return;
+    if (catalogReviewOnly) {
+      setLastCatalogResult({ ...result, firstClear: false, earnedRewards: { knowledgeEnergy: 0, knowledgeShards: 0 }, nextLevel: null, reviewOnly: true });
+      setView("catalog-completion");
+      return;
+    }
     const transition = recordCatalogLevelResult(catalogProgress, level, result, { levels: ALL_LEVELS });
     setCatalogProgress(transition.progress);
     setLastCatalogResult({ ...transition.result, firstClear: transition.firstClear, earnedRewards: transition.earnedRewards, nextLevel: transition.nextLevel });
@@ -480,7 +491,7 @@ export default function App() {
   }
 
   function checkpointCatalogLevel(checkpoint) {
-    if (!checkpoint || !selectedCatalogLevelId) return;
+    if (catalogReviewOnly || !checkpoint || !selectedCatalogLevelId) return;
     setCatalogProgress((current) => normalizeCatalogProgress({
       ...current,
       runtimeCheckpoints: { ...(current.runtimeCheckpoints ?? {}), [selectedCatalogLevelId]: checkpoint },
@@ -995,13 +1006,14 @@ export default function App() {
       onStartFresh={beginFreshSession}
     />
   );
-  if (view === "catalog-map") return <CatalogMapView progress={catalogProgress} onStart={startCatalogLevel} onBack={() => setView("home")} />;
+  if (view === "catalog-map") return <CatalogMapView progress={catalogProgress} grade={catalogGrade} chapter={catalogChapter} onGradeChange={(nextGrade) => { setCatalogGrade(nextGrade); setCatalogChapter(1); }} onChapterChange={setCatalogChapter} onStart={startCatalogLevel} onPreview={(level) => startCatalogLevel(level, { reviewOnly: true })} onBack={() => setView("home")} />;
   if (view === "catalog-play" && selectedCatalogLevel) return (
     <LevelRuntime
       key={selectedCatalogLevel.id}
       level={selectedCatalogLevel}
       progress={catalogProgress}
       profile={profile}
+      reviewOnly={catalogReviewOnly}
       audioProvider={audio}
       onComplete={completeCatalogLevel}
       onPhaseCheckpoint={checkpointCatalogLevel}
@@ -1012,8 +1024,9 @@ export default function App() {
     <CatalogCompletionView
       level={selectedCatalogLevel}
       result={lastCatalogResult}
+      reviewOnly={catalogReviewOnly}
       onContinue={() => setView("catalog-map")}
-      onReplay={() => startCatalogLevel(selectedCatalogLevel)}
+      onReplay={() => startCatalogLevel(selectedCatalogLevel, { reviewOnly: catalogReviewOnly })}
     />
   );
   if (view === "review-play" && reviewNode) return (

@@ -4,22 +4,22 @@
 
 `LevelRuntime v1` là runtime data-driven cho catalog 500 level. Catalog giữ learning intent và prerequisite; runtime chọn mechanic family, renderer và pure state engine. Level id không được dùng làm nhánh React.
 
-Luồng reviewable đầu tiên được nối trong App:
+Luồng reviewable trong App:
 
-`catalog-map → g1-l001..g1-l010 → normalized learning evidence → Knowledge Energy/Shards → restoration/reward → catalog-map`
+`catalog-map → grade/chapter → catalog level → mechanic renderer → normalized learning evidence → Knowledge Energy/Shards → restoration/reward → catalog-map`
 
-Chapter 2 (`g1-l011`) chỉ là boundary tiếp theo. Nội dung curriculum vẫn là prototype mapping và không tự động được approve.
+Tất cả 500 row có thể mở ở chế độ `Thử bản review`; prerequisite chỉ áp dụng cho campaign thật. Nội dung curriculum vẫn là prototype mapping và không tự động được approve.
 
 ## Các lớp
 
 - `src/runtime/levelRuntimeEngine.js`: state machine thuần cho attempts, actions, supports, guided state, error codes, accuracy, mastery, phase checkpoint và normalized result.
 - `src/runtime/levelRuntimeAdapter.js`: resolve một catalog level thành renderer family, content, boss phase sequence và review references.
 - `src/runtime/levelRuntimeRegistry.js`: registry renderer theo `mechanicId`; unknown mechanic trả fallback fail-closed.
-- `src/runtime/levelRuntimeContent.js`: bounded content cho Grade 1 Chapter 1, tách khỏi catalog và React.
+- `src/runtime/levelRuntimeContent.js`: content deterministic theo mechanic cho cả 500 row; content review cụ thể của Grade 1 được ưu tiên, tách khỏi catalog và React.
 - `src/runtime/levelRuntimeRenderers.jsx`: các renderer family touch-first: collect, slot-fill, sort, path, build-repair, simulation, match, sequence, observation, data/lab và boss.
 - `src/runtime/LevelRuntime.jsx`: shell generic quản lý session state, Oracle local, support ladder, duration, completion và checkpoint callback.
 - `src/runtime/catalogProgression.js`: progress schema v1, prerequisite unlock, Grade → Chapter → Level progress, first-clear reward ledger và replay evidence.
-- `src/runtime/CatalogCampaignView.jsx`: map Chapter 1 và restoration/reward handoff để reviewer trải nghiệm mà không mở rộng legacy 12-node shell.
+- `src/runtime/CatalogCampaignView.jsx`: map 5 grade × 10 chapter, campaign action và review-only action để reviewer trải nghiệm mà không mở rộng legacy 12-node shell.
 
 ## Normalized completion contract
 
@@ -48,7 +48,9 @@ Mastery không chỉ là sao: attempts, support, guided completion, accuracy, er
 
 ## Boss Chapter 1
 
-`g1-l010` có bốn phase theo family: `collect → sequence → match → observation`. Mỗi phase cập nhật checkpoint; lỗi chỉ làm giảm recovery meter cục bộ, không reset toàn boss. Oracle gợi ý theo ladder ba bước và không nói “sai” hay tự lộ đáp án ngay.
+Boss lấy phase từ `boss.reviewLevelIds` của catalog, chọn đều các mechanic đại diện theo `phaseCount`; không còn chuỗi phase hard-code. `g1-l010` hiện dùng `collect → path → simulation → observation`. Mỗi phase cập nhật checkpoint; lỗi chỉ làm giảm recovery meter cục bộ, không reset toàn boss. Grand Boss dùng 6 phase.
+
+Khi level bị khóa, reviewer có thể dùng `Thử bản review` để kiểm tra mechanic và boss mà không ghi progress, checkpoint, unlock hoặc reward. Đây là đường QA rõ ràng, không phải bypass campaign.
 
 ## Progress và reward
 
@@ -58,8 +60,10 @@ Progress local-only dùng key `lumora.catalog.progress.v1`. `rewardLedger` đả
 
 - `src/runtime/levelRuntime.test.js`: catalog resolution, unknown mechanic, unlock/prerequisite, normalized result, supports/mastery, replay idempotency, chapter boundary, boss checkpoints và local Oracle.
 - Full suite: `339/339` pass.
-- `npm run build:demo`: pass; curriculum prototype audit vẫn fail-closed ở production vì catalog/content chưa có human official approval.
+- `npm run build`: pass qua review build (`audit:curriculum` + `vite build`).
+- `npm run build:production`: vẫn fail-closed khi chưa có human official approval; không dùng review build để biến prototype thành production curriculum.
+- Browser QA: localhost HTTP 200, không có Vite overlay/console error; đã chơi hết 4 phase `g1-l010` và kiểm tra Grand Boss 6 phase ở chế độ review.
 
 ## Giới hạn có chủ ý
 
-App chỉ cho phép reviewer chơi Grade 1 Chapter 1 (`g1-l001`…`g1-l010`). Các catalog row còn lại có schema và adapter boundary, nhưng chưa được mở trong campaign UI. Firebase/Gemini không được thêm; Oracle local fallback là đường chạy mặc định.
+Campaign thật vẫn mở tuần tự theo prerequisite và curriculum approval chưa được tự động nâng. `Thử bản review` mở rộng QA cho cả catalog nhưng không tạo completion record. Firebase/Gemini không được thêm; Oracle local fallback là đường chạy mặc định.

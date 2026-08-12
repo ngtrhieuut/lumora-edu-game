@@ -534,3 +534,17 @@
 **Boss boundary:** `g1-l010` có 4 phase và checkpoint từng phase. Failure không reset toàn bộ boss; recovery meter và Oracle support chỉ là cơ chế hồi phục trong session.
 
 **Verification:** `src/runtime/levelRuntime.test.js`, full `npm test` `339/339`, `npm run build:demo`. `agent-browser` CLI không có trong workspace nên dev server được kiểm tra bằng HTTP `200`, headless Chrome dump DOM và Vite build; browser panel đã được mở để reviewer kiểm tra trực quan. Production audit vẫn fail-closed vì curriculum chưa có human official approval.
+
+## 2026-08-12 - Catalog grades phải chạy bằng mechanic data, boss phải review đúng game đã học
+
+**Decision:** Runtime không giới hạn ở `g1-l001`…`g1-l010`. `CatalogCampaignView` duyệt được 5 lớp × 10 chương; `levelRuntimeContent` sinh content deterministic theo `mechanicId`, còn content review cụ thể được ưu tiên khi có. Không tạo switch theo 500 `levelId`.
+
+**Boss boundary:** Boss lấy source mechanics từ `boss.reviewLevelIds`, chọn đều theo `phaseCount` và gắn label theo mechanic thật. `g1-l010` dùng `collect → path → simulation → observation`; Grand Boss dùng 6 phase. `BossRenderer` lấy `phaseIndex` từ runtime state/checkpoint, không giữ một phase index React riêng có thể lệch checkpoint.
+
+**Review boundary:** Level khóa có `Thử bản review`. Review-only chỉ cho kiểm tra thao tác và logic, không ghi completion, unlock, checkpoint hoặc reward. Campaign thật vẫn kiểm tra prerequisite.
+
+**Build boundary:** `npm run build` là review build (`audit:curriculum` + `vite build`) để reviewer luôn build được prototype. `npm run build:production` giữ curriculum approval gate và tiếp tục fail-closed khi chưa có human official approval.
+
+**UX boundary:** Mỗi mechanic hiển thị mục tiêu, 3 bước thao tác và quy tắc ngắn; visual count/choice lấy từ content thay vì số minh họa hard-code. Oracle local vẫn là fallback mặc định.
+
+**Verification:** `npm test` `339/339`, `npm run build`, browser QA đã hoàn tất `g1-l010` qua 4 phase/checkpoint, kiểm tra Grade 5 Grand Boss 6 phase và review level ở Chapter 2; không có Vite overlay hoặc console error.

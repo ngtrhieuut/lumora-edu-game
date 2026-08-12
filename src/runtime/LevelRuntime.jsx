@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { createRuleBasedOracleProvider, FALLBACK_HINT } from "../services/oracleProvider.js";
-import { resolveLevelRuntime } from "./levelRuntimeAdapter.js";
+import { getRuntimePhaseContent, resolveLevelRuntime } from "./levelRuntimeAdapter.js";
 import {
   completeRuntimePhase,
   createLevelRuntimeState,
@@ -55,6 +55,7 @@ export default function LevelRuntime({
   level,
   progress = null,
   profile = null,
+  reviewOnly = false,
   oracleProvider = LOCAL_CATALOG_ORACLE,
   audioProvider = null,
   onComplete = () => {},
@@ -78,7 +79,7 @@ export default function LevelRuntime({
 
   useEffect(() => {
     if (!adapted.ok) return undefined;
-    const checkpoint = progress?.runtimeCheckpoints?.[level.id];
+    const checkpoint = reviewOnly ? null : progress?.runtimeCheckpoints?.[level.id];
     const seeded = createLevelRuntimeState(level, { phaseIds: adapted.phaseIds });
     const resumed = checkpoint
       ? normalizeLevelRuntimeState({ ...seeded, ...checkpoint }, level, { phaseIds: adapted.phaseIds })
@@ -91,7 +92,7 @@ export default function LevelRuntime({
     setFinishing(false);
     durationRef.current = 0;
     return undefined;
-  }, [adapted.ok, adapted.phaseIds, level]);
+  }, [adapted.ok, adapted.phaseIds, level, reviewOnly]);
 
   useEffect(() => {
     const timer = window.setInterval(() => {
@@ -103,6 +104,20 @@ export default function LevelRuntime({
   useEffect(() => () => {
     if (completionTimerRef.current !== null) window.clearTimeout(completionTimerRef.current);
   }, []);
+
+  const runtimePhaseForHints = adapted.ok
+    ? adapted.phases?.[runtimeState?.phaseIndex] ?? null
+    : null;
+  const hintMechanicId = runtimePhaseForHints?.mechanicId ?? level.mechanicId;
+  const contentOracle = useMemo(() => {
+    const phaseContent = runtimePhaseForHints
+      ? getRuntimePhaseContent(runtimePhaseForHints, level)
+      : adapted.content;
+    const ladder = Array.isArray(phaseContent?.hintLadder) && phaseContent.hintLadder.length
+      ? phaseContent.hintLadder
+      : CATALOG_HINTS[hintMechanicId] ?? CATALOG_HINTS.observation;
+    return createRuleBasedOracleProvider({ [hintMechanicId]: ladder });
+  }, [adapted.content, hintMechanicId, level, runtimePhaseForHints]);
 
   if (!adapted.ok) {
     return (
@@ -133,10 +148,10 @@ export default function LevelRuntime({
   }
 
   function showHint(levelNumber, errorCode = null, { guided = false, trigger = "manual" } = {}) {
-    const request = { type: level.mechanicId, level: levelNumber, errorCode };
-    const result = safeHint(oracleProvider, request);
+    const request = { type: hintMechanicId, level: levelNumber, errorCode };
+    const result = safeHint(oracleProvider, request, contentOracle);
     const applyHint = (hint) => {
-      const safe = hint && typeof hint.text === "string" && hint.text.trim() ? hint : LOCAL_CATALOG_ORACLE.getHint(request);
+      const safe = hint && typeof hint.text === "string" && hint.text.trim() ? hint : contentOracle.getHint(request);
       const next = recordRuntimeSupport(runtimeStateRef.current ?? state, { hintLevel: safe.level ?? levelNumber, guided });
       applyState(next);
       setNotice(safe.text || FALLBACK_HINT);
@@ -145,7 +160,7 @@ export default function LevelRuntime({
       safeAudio(audioProvider, "narrate", safe.text || FALLBACK_HINT, { dedupeKey: `${level.id}-hint-${safe.level ?? levelNumber}-${trigger}` });
     };
     if (result.type === "async") {
-      void Promise.resolve(result.promise).then(applyHint).catch(() => applyHint(LOCAL_CATALOG_ORACLE.getHint(request)));
+      void Promise.resolve(result.promise).then(applyHint).catch(() => applyHint(contentOracle.getHint(request)));
       return;
     }
     applyHint(result.hint);
@@ -207,15 +222,16 @@ export default function LevelRuntime({
 
   const progressLabel = isBoss
     ? `Checkpoint ${Math.min(state.phaseIndex + 1, adapted.phases.length)}/${adapted.phases.length}`
-    : `Level ${level.order}/100`;
+    : `Chặng ${level.order}/100`;
 
   return (
-    <section className={`level-runtime-shell ${isBoss ? "is-boss" : ""} ${finishing ? "is-finishing" : ""}`} aria-labelledby="runtime-level-title">
+    <section className={`level-runtime-shell ${isBoss ? "is-boss" : ""} ${reviewOnly ? "is-review-only" : ""} ${finishing ? "is-finishing" : ""}`} aria-labelledby="runtime-level-title">
       <header className="runtime-header">
         <button type="button" className="runtime-exit-button" onClick={onExit} aria-label="Quay lại bản đồ">←</button>
-        <div className="runtime-header-copy"><span>Grade {level.grade} · Chapter {level.chapter} · {level.chapterTitleVi}</span><h1 id="runtime-level-title">{level.titleVi}</h1></div>
+        <div className="runtime-header-copy"><span>Lớp {level.grade} · Chương {level.chapter} · {level.chapterTitleVi}</span><h1 id="runtime-level-title">{level.titleVi}</h1></div>
         <strong className="runtime-level-counter">{progressLabel}</strong>
       </header>
+      {reviewOnly && <div className="runtime-review-banner" role="status">Bản review: chơi thật để kiểm tra logic, không ghi mở khóa, checkpoint hoặc reward.</div>}
       <div className="runtime-objective"><span aria-hidden="true">{isBoss ? "◆" : "✦"}</span><div><b>{level.learningObjectiveVi}</b><small>{level.designBriefVi}</small></div></div>
       <div className="runtime-body">
         <div className="runtime-nubi"><span>✦</span><div><b>Nubi</b><small>{noticeTone === "guided" ? "Mạch đang soi bước cuối." : "Con vẫn là người điều khiển."}</small></div></div>
@@ -227,7 +243,7 @@ export default function LevelRuntime({
         <div><span>MẠCH · GỢI Ý {state.hintLevel}/3</span><p>{notice}</p></div>
         <button type="button" className="runtime-support-button" onClick={askSupport} disabled={finishing || (state.hintLevel >= 3 && state.guided)}>Nhờ Mạch gợi ý</button>
       </aside>
-      {finishing && <div className="runtime-success-burst" role="status" aria-live="polite"><span>✦</span><b>{isBoss ? "Lõi Tri Thức đã được hồi sinh." : "Mạch ánh sáng đã hoàn tất."}</b><small>Reward sẽ chỉ ghi một lần ở first clear.</small></div>}
+      {finishing && <div className="runtime-success-burst" role="status" aria-live="polite"><span>✦</span><b>{isBoss ? "Lõi Tri Thức đã được hồi sinh." : "Mạch ánh sáng đã hoàn tất."}</b><small>{reviewOnly ? "Bản review không ghi tiến độ." : "Reward chỉ ghi một lần ở lần hoàn tất đầu tiên."}</small></div>}
       {currentPhase && isBoss && <span className="sr-only">Đang ở phase {currentPhase.index + 1}: {currentPhase.labelVi}</span>}
     </section>
   );

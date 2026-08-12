@@ -11,6 +11,18 @@ function RuntimeBoardFrame({ label, status, children }) {
   );
 }
 
+function RuntimeInstructions({ content }) {
+  const steps = Array.isArray(content?.steps) ? content.steps : [];
+  if (!content?.guideTitleVi && steps.length === 0) return null;
+  return (
+    <section className="runtime-instructions" aria-label="Cách chơi">
+      <div className="runtime-instructions-heading"><span aria-hidden="true">?</span><div><b>{content.guideTitleVi ?? "Cách chơi"}</b><small>{content.objectiveVi ?? "Làm từng bước, không cần vội."}</small></div></div>
+      <ol>{steps.slice(0, 3).map((step, index) => <li key={`${index}-${step}`}><b>{index + 1}</b><span>{step}</span></li>)}</ol>
+      {content.ruleVi && <p><strong>Quy tắc:</strong> {content.ruleVi}</p>}
+    </section>
+  );
+}
+
 function RuntimeToken({ children, selected = false, guided = false, disabled = false, onClick, className = "" }) {
   return (
     <button
@@ -66,6 +78,7 @@ export function CollectRenderer({ content, guided, onAction, onAttempt, onFinish
 export function SlotFillRenderer({ content, guided, onAction, onAttempt, onFinish }) {
   const slots = Array.isArray(content.slots) ? content.slots : [];
   const choices = Array.isArray(content.choices) ? content.choices : [];
+  const centerValue = content.centerValue ?? 3;
   const [selected, setSelected] = useState(null);
   const [filled, setFilled] = useState({});
   const nextSlot = slots.find((slot) => filled[slot.id] === undefined);
@@ -91,7 +104,7 @@ export function SlotFillRenderer({ content, guided, onAction, onAttempt, onFinis
 
   return (
     <RuntimeBoardFrame label="Cầu Pha Lê với các slot số trước và sau" status={`${Object.keys(filled).length}/${slots.length} slot đã sáng`}>
-      <div className="runtime-sequence-bridge"><span className="runtime-number-node">3</span><span className="runtime-bridge-line" /><span className="runtime-number-node is-missing">?</span></div>
+      <div className="runtime-sequence-bridge"><span className="runtime-number-node">{centerValue}</span><span className="runtime-bridge-line" /><span className="runtime-number-node is-missing">?</span></div>
       <div className="runtime-slot-grid">
         {slots.map((slot) => <button key={slot.id} type="button" className={`runtime-slot ${filled[slot.id] !== undefined ? "is-filled" : ""} ${guided && nextSlot?.id === slot.id ? "is-guided" : ""}`} disabled={filled[slot.id] !== undefined} onClick={() => place(slot)}><span>{filled[slot.id] ?? "?"}</span><small>{slot.label}</small></button>)}
       </div>
@@ -129,12 +142,12 @@ export function SortRenderer({ content, guided, onAction, onAttempt, onFinish })
 
   return (
     <RuntimeBoardFrame label="Tháp Cổ phân loại nhóm nhiều hơn và ít hơn" status={`${Object.keys(placed).length}/${items.length} cụm đã đặt`}>
-      <div className="runtime-sort-scene"><span>◌</span><span>✦ ✦ ✦</span><span>✦ ✦ ✦ ✦ ✦</span><small>So sánh bằng mắt và đếm từng nhóm.</small></div>
+      <div className="runtime-sort-scene"><span>◌</span>{items.map((item) => <span key={item.id}>{"✦ ".repeat(item.count).trim()}<small>{item.label}</small></span>)}<small>So sánh bằng mắt và đếm từng nhóm.</small></div>
       <div className="runtime-choice-row runtime-sort-items">
         {items.map((item) => <RuntimeToken key={item.id} selected={selected?.id === item.id} guided={guided && nextItem?.id === item.id} disabled={placed[item.id] !== undefined} onClick={() => { onAction(); setSelected(item); }}><span className="runtime-count-dots">{"✦ ".repeat(item.count).trim()}</span><small>{item.label}</small></RuntimeToken>)}
       </div>
       <div className="runtime-bucket-grid">
-        {buckets.map((bucket) => <button key={bucket.id} type="button" className={`runtime-bucket ${guided && nextItem?.bucket === bucket.id ? "is-guided" : ""}`} onClick={() => place(bucket)}><span>{bucket.id === "more" ? "✦✦✦✦" : "✦✦"}</span><b>{bucket.label}</b></button>)}
+        {buckets.map((bucket) => <button key={bucket.id} type="button" className={`runtime-bucket ${guided && nextItem?.bucket === bucket.id ? "is-guided" : ""}`} onClick={() => place(bucket)}><span>{bucket.id === "more" ? "↑" : "↓"}</span><b>{bucket.label}</b></button>)}
       </div>
     </RuntimeBoardFrame>
   );
@@ -361,8 +374,7 @@ function UnsupportedRenderer({ mechanicId }) {
 
 export function BossRenderer({ level, phases, initialPhaseIndex = 0, guided, onAction, onAttempt, onPhaseFinish }) {
   const [handoff, setHandoff] = useState(null);
-  const [phaseIndex, setPhaseIndex] = useState(() => Math.min(phases.length, Math.max(0, initialPhaseIndex)));
-  const safePhaseIndex = Math.min(phases.length, Math.max(0, phaseIndex));
+  const safePhaseIndex = Math.min(phases.length, Math.max(0, Number.isFinite(initialPhaseIndex) ? Math.trunc(initialPhaseIndex) : 0));
   const phase = phases[safePhaseIndex];
   const phaseContent = useMemo(() => getRuntimePhaseContent(phase, level), [level, phase]);
   if (!phases.length) return <UnsupportedRenderer mechanicId="boss-phase" />;
@@ -370,7 +382,6 @@ export function BossRenderer({ level, phases, initialPhaseIndex = 0, guided, onA
   function finishPhase() {
     if (handoff) return;
     onPhaseFinish(phase, safePhaseIndex, () => {
-      setPhaseIndex((current) => current + 1);
       setHandoff({ nextIndex: safePhaseIndex + 1 });
     });
   }
@@ -391,16 +402,18 @@ export function BossRenderer({ level, phases, initialPhaseIndex = 0, guided, onA
 }
 
 export function RuntimeMechanicRenderer({ rendererId, level, content, phases = [], initialPhaseIndex = 0, guided = false, onAction = () => {}, onAttempt = () => {}, onFinish = () => {}, onPhaseFinish = () => {} }) {
-  if (rendererId === "collect") return <CollectRenderer content={content} guided={guided} onAction={onAction} onAttempt={onAttempt} onFinish={onFinish} />;
-  if (rendererId === "slot-fill") return <SlotFillRenderer content={content} guided={guided} onAction={onAction} onAttempt={onAttempt} onFinish={onFinish} />;
-  if (rendererId === "sort") return <SortRenderer content={content} guided={guided} onAction={onAction} onAttempt={onAttempt} onFinish={onFinish} />;
-  if (rendererId === "path") return <PathRenderer content={content} guided={guided} onAction={onAction} onAttempt={onAttempt} onFinish={onFinish} />;
-  if (rendererId === "build-repair") return <BuildRepairRenderer content={content} guided={guided} onAction={onAction} onAttempt={onAttempt} onFinish={onFinish} />;
-  if (rendererId === "simulation" || rendererId === "resource-balance") return <SimulationRenderer content={content} guided={guided} onAction={onAction} onAttempt={onAttempt} onFinish={onFinish} />;
-  if (rendererId === "match") return <MatchRenderer content={content} guided={guided} onAction={onAction} onAttempt={onAttempt} onFinish={onFinish} />;
-  if (rendererId === "sequence") return <SequenceRenderer content={content} guided={guided} onAction={onAction} onAttempt={onAttempt} onFinish={onFinish} />;
-  if (rendererId === "observation") return <ObservationRenderer content={content} guided={guided} onAction={onAction} onAttempt={onAttempt} onFinish={onFinish} />;
-  if (rendererId === "data" || rendererId === "lab") return <DataRenderer content={content} guided={guided} onAction={onAction} onAttempt={onAttempt} onFinish={onFinish} />;
-  if (rendererId === "boss") return <BossRenderer level={level} phases={phases} initialPhaseIndex={initialPhaseIndex} guided={guided} onAction={onAction} onAttempt={onAttempt} onPhaseFinish={onPhaseFinish} />;
-  return <UnsupportedRenderer mechanicId={level?.mechanicId} />;
+  let board;
+  if (rendererId === "collect") board = <CollectRenderer content={content} guided={guided} onAction={onAction} onAttempt={onAttempt} onFinish={onFinish} />;
+  else if (rendererId === "slot-fill") board = <SlotFillRenderer content={content} guided={guided} onAction={onAction} onAttempt={onAttempt} onFinish={onFinish} />;
+  else if (rendererId === "sort") board = <SortRenderer content={content} guided={guided} onAction={onAction} onAttempt={onAttempt} onFinish={onFinish} />;
+  else if (rendererId === "path") board = <PathRenderer content={content} guided={guided} onAction={onAction} onAttempt={onAttempt} onFinish={onFinish} />;
+  else if (rendererId === "build-repair") board = <BuildRepairRenderer content={content} guided={guided} onAction={onAction} onAttempt={onAttempt} onFinish={onFinish} />;
+  else if (rendererId === "simulation" || rendererId === "resource-balance") board = <SimulationRenderer content={content} guided={guided} onAction={onAction} onAttempt={onAttempt} onFinish={onFinish} />;
+  else if (rendererId === "match") board = <MatchRenderer content={content} guided={guided} onAction={onAction} onAttempt={onAttempt} onFinish={onFinish} />;
+  else if (rendererId === "sequence") board = <SequenceRenderer content={content} guided={guided} onAction={onAction} onAttempt={onAttempt} onFinish={onFinish} />;
+  else if (rendererId === "observation") board = <ObservationRenderer content={content} guided={guided} onAction={onAction} onAttempt={onAttempt} onFinish={onFinish} />;
+  else if (rendererId === "data" || rendererId === "lab") board = <DataRenderer content={content} guided={guided} onAction={onAction} onAttempt={onAttempt} onFinish={onFinish} />;
+  else if (rendererId === "boss") board = <BossRenderer level={level} phases={phases} initialPhaseIndex={initialPhaseIndex} guided={guided} onAction={onAction} onAttempt={onAttempt} onPhaseFinish={onPhaseFinish} />;
+  else board = <UnsupportedRenderer mechanicId={level?.mechanicId} />;
+  return <><RuntimeInstructions content={content} />{board}</>;
 }

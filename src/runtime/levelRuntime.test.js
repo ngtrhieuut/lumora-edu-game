@@ -34,9 +34,15 @@ test("runtime registry resolves all ten wired Grade 1 levels by mechanic family"
     assert.ok(resolved.rendererId);
   }
   const boss = resolveLevelRuntime(level("g1-l010"));
-  assert.deepEqual(boss.phases.map((phase) => phase.mechanicId), ["collect", "sequence", "match", "observation"]);
+  assert.deepEqual(boss.phases.map((phase) => phase.mechanicId), ["collect", "path", "simulation", "observation"]);
   assert.equal(boss.phases.length, 4);
-  assert.deepEqual(boss.phases.slice(1).map((phase) => Object.keys(getRuntimePhaseContent(phase, level("g1-l010"))).filter((key) => ["sequence", "pairs", "scenes"].includes(key))), [["sequence"], ["pairs"], ["scenes"]]);
+  assert.deepEqual(boss.phases.slice(1).map((phase) => Object.keys(getRuntimePhaseContent(phase, level("g1-l010"))).filter((key) => ["sequence", "splits", "scenes"].includes(key))), [["sequence"], ["splits"], ["scenes"]]);
+  for (const grade of [1, 2, 3, 4, 5]) {
+    const gradeBoss = resolveLevelRuntime(level(`g${grade}-l010`));
+    assert.equal(gradeBoss.ok, true, `Grade ${grade} chapter boss should resolve`);
+    assert.equal(gradeBoss.phases.length, 4);
+    assert.ok(gradeBoss.phases.every((phase) => phase.rendererId));
+  }
   assert.deepEqual(auditRuntimeRendererRegistry(), { valid: true, errors: [] });
 });
 
